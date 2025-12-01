@@ -1,0 +1,121 @@
+import requests, io
+import pandas as pd
+
+ridership_df = pd.DataFrame()
+
+links = [
+    'https://www.bart.gov/sites/default/files/2025-11/Ridership_202510.xlsx',
+    'https://www.bart.gov/sites/default/files/2025-10/Ridership_202509.xlsx',
+    'https://www.bart.gov/sites/default/files/2025-10/Ridership_202508.xlsx',
+    'https://www.bart.gov/sites/default/files/2025-08/Ridership_202507.xlsx',
+    'https://www.bart.gov/sites/default/files/2025-07/Ridership_202506.xlsx',
+    'https://www.bart.gov/sites/default/files/2025-06/Ridership_202505.xlsx',
+    'https://www.bart.gov/sites/default/files/2025-05/Ridership_202504.xlsx',
+    'https://www.bart.gov/sites/default/files/2025-05/Ridership_202503.xlsx',
+    'https://www.bart.gov/sites/default/files/2025-03/Ridership_202502.xlsx',
+    'https://www.bart.gov/sites/default/files/2025-02/Ridership_202501.xlsx'
+]
+
+def extract_date_from_link(link):
+    """
+    Extract substring between 'Ridership_' and '.xlsx'.
+    Example: 'Ridership_202510.xlsx' → '202510'
+    """
+    start = link.find("Ridership_") + len("Ridership_")
+    end = link.find(".xlsx")
+    return link[start:end]
+
+def set_header_row(df, keyword="Exit Station Two-Letter Code"):
+    """
+    Find the row containing keyword and use it as the column headers.
+    Return the cleaned DataFrame.
+    """
+    # locate the header row index
+    header_idx = df.index[df.apply(lambda row: row.astype(str).str.contains(keyword).any(), axis=1)]
+
+    if len(header_idx) == 0:
+        # no header row found — return unchanged
+        return df
+
+    header_idx = header_idx[0]
+
+    # set the header
+    new_header = df.iloc[header_idx]
+    df = df[header_idx + 1 :]  # drop the header row and all above it
+    df.columns = new_header
+
+    return df.reset_index(drop=True)
+
+
+for link in links:
+    response = requests.get(link)
+
+    df = pd.read_excel(
+        io.BytesIO(response.content),
+        engine='openpyxl',
+        header=None,
+        sheet_name='Average Weekday'
+    )
+
+    df = set_header_row(df)
+
+    # Add extracted date
+    df["date"] = extract_date_from_link(link)
+
+    ridership_df = pd.concat([ridership_df, df], ignore_index=True)
+
+# https://www.bart.gov/sites/default/files/docs/station-names.xls
+
+station_map_df = pd.DataFrame({
+    "code": [
+        "RM","EN","EP","NB","BK","AS","MA","19","12","LM","FV","CL","SL","BF","HY","SH",
+        "UC","FM","CN","PH","WC","LF","OR","RR","OW","EM","MT","PL","CC","16","24","GP",
+        "BP","DC","CM","CV","ED","NC","WP","SS","SB","SO","MB","WD","OA","WS","AN","PC",
+        "ML","BE"
+    ],
+    "stop_name": [
+        "Richmond","El Cerrito Del Norte","El Cerrito Plaza","North Berkeley",
+        "Downtown Berkeley","Ashby","MacArthur","19th Street Oakland",
+        "12th Street / Oakland City Center","Lake Merritt","Fruitvale","Coliseum - OAC",
+        "San Leandro","Bay Fair","Hayward","South Hayward","Union City","Fremont",
+        "Concord","Pleasant Hill / Contra Costa Centre","Walnut Creek","Lafayette","Orinda","Rockridge",
+        "West Oakland","Embarcadero","Montgomery Street","Powell Street",
+        "Civic Center / UN Plaza","16th Street / Mission","24th Street / Mission","Glen Park",
+        "Balboa Park","Daly City","Colma","Castro Valley","Dublin / Pleasanton",
+        "North Concord / Martinez","Pittsburg / Bay Point","South San Francisco","San Bruno",
+        "San Francisco International Airport","Millbrae (Caltrain Transfer Platform)","West Dublin / Pleasanton",
+        "Oakland International Airport Station","Warm Springs / South Fremont","Antioch","Pittsburg Center",
+        "Milpitas","Berryessa / North San Jose"
+    ]
+})
+
+GTFS_URL = "https://www.bart.gov/dev/schedules/google_transit.zip"
+
+response = requests.get(GTFS_URL)
+z = zipfile.ZipFile(io.BytesIO(response.content))
+
+# Load GTFS components into DataFrames
+routes = pd.read_csv(z.open("routes.txt"))
+stops = pd.read_csv(z.open("stops.txt"))
+trips = pd.read_csv(z.open("trips.txt"), dtype={"route_id": str})
+stop_times = pd.read_csv(z.open("stop_times.txt"))
+calendar = pd.read_csv(z.open("calendar.txt"))
+
+# Join trips with routes
+trip_routes = trips.merge(routes, on="route_id", how="left")
+
+# Join stop_times with stops
+times_with_stops = stop_times.merge(stops, on="stop_id", how="left")
+
+# Final joined table
+full_schedule = (
+    trip_routes
+    .merge(times_with_stops, on="trip_id", how="left")
+    .sort_values(["route_id", "trip_id", "stop_sequence"])
+)
+
+full_schedule['stop_name'] = full_schedule['stop_name'].str.replace("", "", regex=False)
+
+mapped_schedule = full_schedule.merge(station_map_df, left_on="stop_name", right_on="stop_name", how="left")
+
+# mapped_schedule.to_excel("C:/Users/chhri/Downloads/bart_full_schedule.xlsx")
