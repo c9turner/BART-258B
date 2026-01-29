@@ -42,6 +42,12 @@ A key modeling choice is that optimization is performed over **overnight arcs**,
 The Schrijver model optimizes for the number of cars for the current demand. Therefore, we are proposing that BART currently should run only 251 cars to be optimal. However, as of 2025, BART runs 566 cars. In practice, BART is fairly timely which would indicate significant limitations when modeling the optimum amount of cars BART should have. Ideally, we would have trip-by-trip ridership data to more accurately capture demand. Moreover, our model optimizes all lines and prescribes a total car acount for all lines. And finally, a more rigorous model would consider optimizing BART with projected population growth rates in order to build a system that is optimial for the future.
 
 ---
+
+## Antioch to SF Intl Airport SFO/Millbrae
+
+![Antioch to SF Intl Airport SFO/Millbrae](Antioch to SFO.png)
+
+---
 ## References
 
 [^1]: BART GTFS Schedules  
