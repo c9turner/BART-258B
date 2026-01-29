@@ -45,7 +45,7 @@ The Schrijver model optimizes for the number of cars for the current demand. The
 
 ## Antioch to SF Intl Airport SFO/Millbrae
 
-![Antioch to SF Intl Airport SFO/Millbrae](Antioch to SFO.png)
+[Antioch to SF Intl Airport SFO/Millbrae](https://github.com/c9turner/BART-258B/blob/main/Antioch%20to%20SFO.png)
 
 ---
 ## References
@@ -58,4 +58,5 @@ The Schrijver model optimizes for the number of cars for the current demand. The
 
 [^3]: L. Schrijver, *Flows in Railway Optimization*  
 <https://homepages.cwi.nl/~lex/files/flows_in_ro.pdf>
+
 
